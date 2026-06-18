@@ -1,0 +1,14 @@
+{
+  "name": "mazoroyal",
+  "version": "1.0.0",
+  "description": "Clash Royale Max Deck Generator",
+  "main": "api/scrape.js",
+  "scripts": {
+    "start": "node api/scrape.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5"
+  }
+}
