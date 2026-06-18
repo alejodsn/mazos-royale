@@ -112,10 +112,16 @@ function renderDecks(decks) {
         const list = document.createElement('div');
         list.className = 'card-list';
         deck.forEach(c => {
-            const badge = document.createElement('span');
-            badge.className = 'card-badge';
-            badge.textContent = c.name;
-            list.appendChild(badge);
+            const img = document.createElement('img');
+            img.className = 'card-image';
+            if (c.image) {
+                img.src = c.image;
+            } else {
+                img.src = ''; // Fallback si no hay imagen
+            }
+            img.alt = c.name;
+            img.title = c.name;
+            list.appendChild(img);
         });
         cardEl.appendChild(list);
 
