@@ -46,8 +46,8 @@ export default async function handler(req, res) {
         if (isElite || hasEvolution) {
            maxCards.push({
              name: card.name,
-             // Mapeo al formato de Deckshop: minúsculas y espacios por guiones medios
-             key: card.name.toLowerCase().replace(/\s+/g, '-'),
+             // Mapeo al formato de Deckshop: minúsculas, sin puntos y espacios por guiones medios
+             key: card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-'),
              image: card.iconUrls ? card.iconUrls.medium : ''
            });
         }
