@@ -1,12 +1,11 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
 
 export default async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -15,79 +14,59 @@ export default async function handler(req, res) {
 
   const { tag } = req.query;
   if (!tag) {
-    return res.status(400).json({ error: 'Player Tag is required' });
+    return res.status(400).json({ error: 'El Player Tag es requerido' });
   }
 
-  const cleanTag = tag.replace('#', '').trim();
+  // Asegurarnos de tener el tag limpio, sin #
+  const cleanTag = tag.replace('#', '').trim().toUpperCase();
 
-  // 1. Solución advertencia url.parse(): Usar API moderna new URL()
-  const targetUrl = new URL(`https://royaleapi.com/player/${cleanTag}/cards`);
+  // Utilizar el proxy de RoyaleAPI para evitar bloqueos por IP a la API oficial
+  // Nota: Codificamos el # como %23 dentro de la URL como exige la API oficial
+  const targetUrl = new URL(`https://proxy.royaleapi.dev/v1/players/%23${cleanTag}`);
 
   try {
     const response = await axios.get(targetUrl.href, {
       headers: {
-        // Headers robustos para intentar evadir el antibot (Cloudflare)
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
+        'Authorization': `Bearer ${process.env.CR_API_KEY}`,
+        'Accept': 'application/json'
       }
     });
 
-    const $ = cheerio.load(response.data);
+    const data = response.data;
     const maxCards = [];
 
-    $('.card_grid .card_obj, .ui.cards .card, .player__cards__card').each((i, el) => {
-      const levelText = $(el).find('.level, .card-level, .level-text').text().trim().toLowerCase();
-      const cardName = $(el).find('.name, .card-name').text().trim() || $(el).attr('data-name');
-      
-      if (levelText.includes('15') || levelText.includes('16') || levelText.includes('elite')) {
-        if (cardName) {
+    // Validar que la API devolvió las cartas del jugador
+    if (data && data.cards) {
+      data.cards.forEach(card => {
+        // En la API Oficial, el nivel Elite (15) se alcanza cuando card.level es igual (o mayor) a card.maxLevel.
+        // Además, si el usuario solicitó incluir cartas con evoluciones activas (nivel 16/Evolución):
+        const isElite = card.level >= card.maxLevel;
+        const hasEvolution = card.evolutionLevel && card.evolutionLevel > 0;
+        
+        if (isElite || hasEvolution) {
            maxCards.push({
-             name: cardName,
-             key: cardName.toLowerCase().replace(/[^a-z0-9]/g, '')
+             name: card.name,
+             // Mapeo al formato de Deckshop (solo minúsculas y números)
+             key: card.name.toLowerCase().replace(/[^a-z0-9]/g, '')
            });
         }
-      }
-    });
-
-    if (maxCards.length === 0) {
-      $('[data-level="15"], [data-level="16"]').each((i, el) => {
-         const cardName = $(el).attr('data-name') || $(el).find('.name, .card-name').text().trim();
-         if (cardName) {
-           maxCards.push({
-             name: cardName,
-             key: cardName.toLowerCase().replace(/[^a-z0-9]/g, '')
-           });
-         }
       });
     }
 
+    // Eliminar posibles duplicados
     const uniqueCards = Array.from(new Set(maxCards.map(c => c.key)))
       .map(key => maxCards.find(c => c.key === key));
 
+    // Devolver exactamente la estructura JSON esperada por app.js
     return res.status(200).json({ cards: uniqueCards });
 
   } catch (error) {
-    // 2. Manejo de errores detallado (Logging para Vercel)
-    console.error('--- ERROR AL OBTENER DATOS DE ROYALEAPI ---');
+    console.error('--- ERROR AL OBTENER DATOS DE LA API OFICIAL ---');
     console.error('Mensaje de error:', error.message);
     
     if (error.response) {
       console.error('Status Code:', error.response.status);
-      console.error('Headers de la Respuesta:', JSON.stringify(error.response.headers, null, 2));
-      // Truncar la data de respuesta si es muy grande, pero sirve para ver la página de Cloudflare
-      const responseData = typeof error.response.data === 'string' ? error.response.data.substring(0, 500) : error.response.data;
-      console.error('Data de Respuesta (Truncada):', responseData);
+      console.error('Data de Respuesta:', JSON.stringify(error.response.data, null, 2));
     } else if (error.request) {
       console.error('La petición fue enviada pero no hubo respuesta');
     } else {
@@ -95,9 +74,11 @@ export default async function handler(req, res) {
     }
     console.error('-------------------------------------------');
 
-    let errorMsg = 'No se pudo obtener la información de RoyaleAPI. Verifica el Tag o intenta más tarde.';
-    if (error.response && (error.response.status === 403 || error.response.status === 503)) {
-      errorMsg = 'Bloqueo de Cloudflare detectado al intentar consultar RoyaleAPI.';
+    let errorMsg = 'No se pudo obtener la información. Verifica que el Player Tag sea correcto.';
+    if (error.response && error.response.status === 403) {
+      errorMsg = 'Error 403: Clave de API (CR_API_KEY) inválida o no configurada.';
+    } else if (error.response && error.response.status === 404) {
+      errorMsg = 'Error 404: Jugador no encontrado.';
     }
 
     return res.status(500).json({ error: errorMsg, details: error.message });
