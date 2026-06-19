@@ -1,3 +1,5 @@
+import { metaDecks } from './meta-decks.js';
+
 document.getElementById('search-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const tag = document.getElementById('player-tag').value.trim();
@@ -15,9 +17,6 @@ document.getElementById('search-form').addEventListener('submit', async (e) => {
     grid.innerHTML = '';
 
     try {
-        // Cargar dinámicamente la base de datos local de mazos Meta
-        const { metaDecks } = await import('./meta-decks.js');
-
         const apiUrl = `/api/scrape?tag=${encodeURIComponent(tag)}`;
         const response = await fetch(apiUrl);
         
