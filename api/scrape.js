@@ -1,12 +1,5 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-
-const WIN_CONDITIONS = [
-  'hog-rider', 'miner', 'balloon', 'goblin-barrel', 'x-bow', 'mortar', 
-  'royal-giant', 'elite-barbarians', 'golem', 'lava-hound', 'graveyard', 
-  'sparky', 'goblin-giant', 'ram-rider', 'elixir-golem', 'wall-breakers', 
-  'skeleton-barrel', 'royal-hogs', 'giant'
-];
+import axios from 'axios';
+import { cardRoles, isEvolution } from '../card-dictionary.js';
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -29,7 +22,7 @@ export default async function handler(req, res) {
   const targetUrl = new URL(`https://proxy.royaleapi.dev/v1/players/%23${cleanTag}`);
 
   try {
-    // 1. Obtención de Inventario (RoyaleAPI)
+    // 1. Obtención de Inventario y filtrado de maxeadas (nivel 15, 16 y evoluciones)
     const response = await axios.get(targetUrl.href, {
       headers: {
         'Authorization': `Bearer ${process.env.CR_API_KEY}`,
@@ -43,32 +36,24 @@ export default async function handler(req, res) {
     }
 
     const maxedCards = [];
-    const cardDictionary = {}; 
-    const maxedKeys = new Set();
 
     data.cards.forEach(card => {
       const computedLevel = 14 - card.maxLevel + card.level;
-      const hasEvolution = card.evolutionLevel && card.evolutionLevel > 0;
+      const key = card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+      const hasEvolution = (card.evolutionLevel && card.evolutionLevel > 0) || isEvolution(key);
       
-      // Filtro para nivel 15, 16 y evoluciones
       const isMaxed = computedLevel >= 15 || computedLevel >= 16 || hasEvolution;
       
-      const key = card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
-      
-      const cardObj = {
-        id: card.id,
-        name: card.name,
-        key: key,
-        level: computedLevel,
-        isEvolution: hasEvolution,
-        image: `https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v9-f09d5c9d/${key}.png`
-      };
-
-      cardDictionary[key] = cardObj;
-
       if (isMaxed) {
-        maxedCards.push(cardObj);
-        maxedKeys.add(key);
+        maxedCards.push({
+          id: card.id,
+          name: card.name,
+          key: key,
+          level: computedLevel,
+          isEvolution: hasEvolution,
+          elixir: card.elixir || card.cost || card.elixirCost || 3, // Default a 3 si no existe
+          image: `https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v9-f09d5c9d/${key}.png`
+        });
       }
     });
 
@@ -76,99 +61,123 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, decks: [] });
     }
 
-    // 2. Selección de Semillas
-    let seeds = [];
-    const evos = maxedCards.filter(c => c.isEvolution);
-    const wcs = maxedCards.filter(c => !c.isEvolution && WIN_CONDITIONS.includes(c.key));
-    const others = maxedCards.filter(c => !c.isEvolution && !WIN_CONDITIONS.includes(c.key));
+    // 2. Generador Heurístico Local
+    const generateDecks = (pool, maxDecks = 16) => {
+        const generatedDecks = [];
+        const usedCounts = new Map();
+        pool.forEach(c => usedCounts.set(c.key, 0));
 
-    seeds.push(...evos);
-    if (seeds.length < 3) seeds.push(...wcs);
-    if (seeds.length < 3) seeds.push(...others);
-    
-    seeds = seeds.slice(0, 3); // Hasta 3 cartas clave
-
-    // 3. Scraping en Paralelo
-    const masterDecksMap = new Map();
-
-    const scrapePromises = seeds.map(async (seed) => {
-      try {
-        const url = `https://www.deckshop.pro/es/best-decks/with/${seed.key}`;
-        const deckshopRes = await axios.get(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-            'Accept': 'text/html'
-          }
-        });
-
-        const $ = cheerio.load(deckshopRes.data);
+        // Priorizamos las cartas menos usadas para fomentar variedad
+        const sortByUsage = (a, b) => usedCounts.get(a.key) - usedCounts.get(b.key);
         
-        $('a[href*="/deck/detail/"]').each((i, el) => {
-          const href = $(el).attr('href');
-          const match = href.match(/\/deck\/detail\/([^?#]+)/);
-          if (match && match[1]) {
-            const keys = match[1].split(',');
-            if (keys.length === 8) {
-              const deckId = keys.slice().sort().join(',');
-              masterDecksMap.set(deckId, keys);
+        const evos = pool.filter(c => c.isEvolution);
+
+        for (let i = 0; i < 50; i++) { // Intentos para generar mazos
+            if (generatedDecks.length >= maxDecks) break;
+
+            const deckKeys = new Set();
+            const deck = [];
+
+            const addCard = (card) => {
+                if (card && !deckKeys.has(card.key)) {
+                    deck.push(card);
+                    deckKeys.add(card.key);
+                    usedCounts.set(card.key, usedCounts.get(card.key) + 1);
+                }
+            };
+
+            const getAvailable = (filterFn) => pool.filter(c => filterFn(c) && !deckKeys.has(c.key)).sort(sortByUsage);
+
+            // Regla: Exactamente 2 Evoluciones (si las tiene)
+            const availableEvos = getAvailable(c => c.isEvolution);
+            const evosToPick = Math.min(2, evos.length);
+            for(let j = 0; j < evosToPick; j++) if(availableEvos[j]) addCard(availableEvos[j]);
+
+            // Regla: 1 a 2 Win Conditions
+            const numWc = Math.random() > 0.5 ? 2 : 1;
+            const availableWc = getAvailable(c => cardRoles.win_conditions.includes(c.key));
+            for(let j = 0; j < Math.min(numWc, availableWc.length); j++) if(availableWc[j] && deck.length < 8) addCard(availableWc[j]);
+
+            // Regla: Al menos 1 Small Spell
+            const availableSmall = getAvailable(c => cardRoles.small_spells.includes(c.key));
+            if (availableSmall.length > 0 && deck.length < 8) addCard(availableSmall[0]);
+
+            // Regla: Al menos 1 Anti-Air
+            const availableAntiAir = getAvailable(c => cardRoles.anti_air.includes(c.key));
+            if (availableAntiAir.length > 0 && deck.length < 8) addCard(availableAntiAir[0]);
+
+            // Regla: Rellenar huecos sin repetir cartas
+            while (deck.length < 8) {
+                const availableAny = getAvailable(c => true);
+                if (availableAny.length === 0) break;
+                addCard(availableAny[0]);
             }
-          }
-        });
-      } catch (e) {
-        console.warn(`Error scraping seed ${seed.key}:`, e.message);
-      }
-    });
 
-    await Promise.all(scrapePromises);
-
-    // 4. Filtro Local y Lógica de Variedad
-    // Paso A: Validación Estricta
-    const validDecks = [];
-    for (const [deckId, keys] of masterDecksMap.entries()) {
-      if (keys.every(k => maxedKeys.has(k))) {
-        validDecks.push({
-          _id: deckId,
-          keys: keys,
-          cards: keys.map(k => cardDictionary[k])
-        });
-      }
-    }
-
-    // Paso B: Selección por Variedad
-    const finalDecks = [];
-    const usedCards = new Set();
-    let remainingDecks = [...validDecks];
-
-    while (finalDecks.length < 16 && remainingDecks.length > 0) {
-      let bestDeckIndex = 0;
-      let maxNewCards = -1;
-
-      for (let i = 0; i < remainingDecks.length; i++) {
-        const deck = remainingDecks[i];
-        let newCardsCount = 0;
-        
-        for (const key of deck.keys) {
-          if (!usedCards.has(key)) {
-            newCardsCount++;
-          }
+            if (deck.length === 8) {
+                const deckId = deck.map(c => c.id).sort().join(',');
+                if (!generatedDecks.some(d => d._id === deckId)) {
+                    generatedDecks.push({ _id: deckId, cards: deck });
+                }
+            }
         }
-        
-        if (newCardsCount > maxNewCards) {
-          maxNewCards = newCardsCount;
-          bestDeckIndex = i;
-        }
-      }
+        return generatedDecks;
+    };
 
-      const selectedDeck = remainingDecks.splice(bestDeckIndex, 1)[0];
-      finalDecks.push(selectedDeck);
-      
-      for (const key of selectedDeck.keys) {
-        usedCards.add(key);
-      }
-    }
+    const finalDecksRaw = generateDecks(maxedCards, 16);
 
-    // 5. Retorno al Frontend
-    const responseDecks = finalDecks.map(d => ({ cards: d.cards }));
+    // 3. Calculadora de Estadísticas
+    const calculateStats = (deckCards) => {
+        let totalElixir = 0;
+        let wcCount = 0;
+        let smallSpellCount = 0;
+        let bigSpellCount = 0;
+        let antiAirCount = 0;
+        let buildingCount = 0;
+        let tankCount = 0;
+
+        deckCards.forEach(c => {
+            totalElixir += c.elixir;
+            if (cardRoles.win_conditions.includes(c.key)) wcCount++;
+            if (cardRoles.small_spells.includes(c.key)) smallSpellCount++;
+            if (cardRoles.big_spells.includes(c.key)) bigSpellCount++;
+            if (cardRoles.anti_air.includes(c.key)) antiAirCount++;
+            if (cardRoles.buildings.includes(c.key)) buildingCount++;
+            if (cardRoles.mini_tanks.includes(c.key) || cardRoles.heavy_tanks.includes(c.key)) tankCount++;
+        });
+
+        const averageElixir = Number((totalElixir / 8).toFixed(1));
+
+        let attack = 40;
+        if (wcCount === 1) attack += 30;
+        else if (wcCount >= 2) attack += 40;
+        if (smallSpellCount > 0) attack += 10;
+        if (bigSpellCount > 0) attack += 10;
+        attack = Math.min(100, Math.max(0, attack));
+
+        let defense = 40;
+        if (antiAirCount > 0) defense += 20;
+        if (buildingCount > 0) defense += 20;
+        if (tankCount > 0) defense += 20;
+        defense = Math.min(100, Math.max(0, defense));
+
+        let synergy = 30;
+        if (wcCount > 0) synergy += 20;
+        if (smallSpellCount > 0) synergy += 10;
+        if (bigSpellCount > 0) synergy += 10;
+        if (antiAirCount > 0) synergy += 20;
+        if (tankCount > 0) synergy += 10;
+        synergy = Math.min(100, Math.max(0, synergy));
+
+        let balance = 100 - Math.abs(averageElixir - 3.3) * 30;
+        balance = Math.max(0, Math.min(100, balance));
+
+        return { averageElixir, attack: Math.round(attack), defense: Math.round(defense), synergy: Math.round(synergy), balance: Math.round(balance) };
+    };
+
+    const responseDecks = finalDecksRaw.map(deck => ({
+        cards: deck.cards,
+        stats: calculateStats(deck.cards)
+    }));
 
     return res.status(200).json({ success: true, decks: responseDecks });
 
