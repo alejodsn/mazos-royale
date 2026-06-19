@@ -62,10 +62,20 @@ function renderDecks(decks) {
         const cardEl = document.createElement('div');
         cardEl.className = 'deck-card';
 
+        const headerRow = document.createElement('div');
+        headerRow.className = 'deck-header-row';
+
         const title = document.createElement('div');
         title.className = 'deck-header';
         title.textContent = `Mazo Meta #${index + 1}`;
-        cardEl.appendChild(title);
+
+        const elixirContainer = document.createElement('div');
+        elixirContainer.className = 'elixir-average';
+        elixirContainer.textContent = `💧 ${deck.stats.averageElixir}`;
+
+        headerRow.appendChild(title);
+        headerRow.appendChild(elixirContainer);
+        cardEl.appendChild(headerRow);
 
         const list = document.createElement('div');
         list.className = 'card-list';
@@ -90,6 +100,39 @@ function renderDecks(decks) {
             list.appendChild(cardWrapper);
         });
         cardEl.appendChild(list);
+
+        // Contenedor de Estadísticas
+        const statsContainer = document.createElement('div');
+        statsContainer.className = 'stats-container';
+
+        const createBar = (label, value, colorClass) => {
+            const barWrapper = document.createElement('div');
+            barWrapper.className = 'stat-wrapper';
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'stat-label';
+            labelEl.textContent = `${label} (${value}%)`;
+
+            const track = document.createElement('div');
+            track.className = 'stat-track';
+
+            const fill = document.createElement('div');
+            fill.className = `stat-fill ${colorClass}`;
+            fill.style.width = `${value}%`;
+
+            track.appendChild(fill);
+            barWrapper.appendChild(labelEl);
+            barWrapper.appendChild(track);
+            
+            return barWrapper;
+        };
+
+        statsContainer.appendChild(createBar('Ataque', deck.stats.attack, 'fill-attack'));
+        statsContainer.appendChild(createBar('Defensa', deck.stats.defense, 'fill-defense'));
+        statsContainer.appendChild(createBar('Sinergia', deck.stats.synergy, 'fill-synergy'));
+        statsContainer.appendChild(createBar('Balance', deck.stats.balance, 'fill-balance'));
+
+        cardEl.appendChild(statsContainer);
 
         const link = document.createElement('a');
         link.className = 'deck-link';
