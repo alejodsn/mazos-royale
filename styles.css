@@ -170,11 +170,31 @@ button:active {
     border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Headers de Mazos Modificados */
+.deck-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 .deck-header {
     font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 1rem;
     color: var(--accent);
+}
+
+.elixir-average {
+    background: rgba(192, 38, 211, 0.2);
+    border: 1px solid rgba(192, 38, 211, 0.5);
+    color: #e879f9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .card-list {
@@ -182,7 +202,6 @@ button:active {
     grid-template-columns: repeat(4, 1fr);
     gap: 0.5rem;
     margin-bottom: 1.5rem;
-    flex: 1;
 }
 
 .card-wrapper {
@@ -216,26 +235,6 @@ button:active {
     transform: scale(1.05);
 }
 
-.elixir-badge {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    background: #c026d3;
-    color: white;
-    font-weight: bold;
-    font-size: 0.85rem;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    border: 1px solid #4a044e;
-    text-shadow: 1px 1px 2px black;
-    z-index: 2;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-
 .level-badge {
     position: absolute;
     bottom: 0;
@@ -251,8 +250,62 @@ button:active {
     text-shadow: 1px 1px 1px black;
 }
 
+/* Stats UI (Ataque, Defensa, Sinergia, Balance) */
+.stats-container {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.stat-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.stat-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fill-attack {
+    background: linear-gradient(90deg, #f97316, #ef4444);
+}
+
+.fill-defense {
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+}
+
+.fill-synergy {
+    background: linear-gradient(90deg, #eab308, #f59e0b);
+}
+
+.fill-balance {
+    background: linear-gradient(90deg, #22c55e, #10b981);
+}
+
 .deck-link {
-    display: inline-block;
+    display: block;
     text-align: center;
     padding: 0.75rem;
     background: linear-gradient(135deg, #3b82f6, #8b5cf6);
@@ -260,9 +313,14 @@ button:active {
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, transform 0.1s;
+    margin-top: auto;
 }
 
 .deck-link:hover {
     opacity: 0.9;
+}
+
+.deck-link:active {
+    transform: scale(0.98);
 }
