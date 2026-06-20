@@ -139,22 +139,22 @@ function renderDecks(decks) {
 
         cardEl.appendChild(statsContainer);
 
-        const deckshopKeys = deck.cards.map(c => c.key).join('-');
-        const deckshopLink = `https://www.deckshop.pro/es/check/?deck=${deckshopKeys}`;
+        const deckshopKeys = deck.cards.map(c => c.key).join(',');
+        const deckshopLink = `https://www.deckshop.pro/es/check/deck/${deckshopKeys}`;
 
         const btnDeckshop = document.createElement('a');
         btnDeckshop.className = 'btn-deckshop';
         btnDeckshop.href = deckshopLink;
         btnDeckshop.target = '_blank';
         btnDeckshop.rel = 'noopener noreferrer';
-        btnDeckshop.textContent = 'Revisar en Deck Shop';
+        btnDeckshop.textContent = 'Ver en Deck Shop';
 
         const link = document.createElement('a');
         link.className = 'deck-link';
         link.href = deepLink;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = 'Copiar Mazo a CR';
+        link.textContent = 'Copiar Mazo';
 
         const actionRow = document.createElement('div');
         actionRow.className = 'action-row';
