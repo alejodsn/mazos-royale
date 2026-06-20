@@ -2,6 +2,10 @@
 // Diccionario heurístico para la evaluación de sinergia en mazos de Clash Royale
 
 export const cardRoles = {
+  champions: [
+    'archer-queen', 'golden-knight', 'skeleton-king', 'mighty-miner', 
+    'monk', 'little-prince'
+  ],
   win_conditions: [
     'hog-rider', 'goblin-drill', 'miner', 'balloon', 'x-bow', 'mortar', 
     'golem', 'royal-giant', 'giant', 'goblin-giant', 'lava-hound', 
