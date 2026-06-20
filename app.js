@@ -84,6 +84,10 @@ function renderDecks(decks) {
             const cardWrapper = document.createElement('div');
             cardWrapper.className = `card-wrapper ${c.isEvolution ? 'is-evo' : ''}`;
 
+            const elixirDrop = document.createElement('div');
+            elixirDrop.className = 'elixir-drop';
+            elixirDrop.textContent = c.elixir;
+
             const img = document.createElement('img');
             img.className = 'card-image';
             img.src = c.image;
@@ -92,8 +96,9 @@ function renderDecks(decks) {
 
             const levelBadge = document.createElement('div');
             levelBadge.className = 'level-badge';
-            levelBadge.textContent = `Lvl ${c.level}`;
+            levelBadge.textContent = `Lvl ${c.absoluteLevel}`;
 
+            cardWrapper.appendChild(elixirDrop);
             cardWrapper.appendChild(img);
             cardWrapper.appendChild(levelBadge);
             
@@ -134,13 +139,29 @@ function renderDecks(decks) {
 
         cardEl.appendChild(statsContainer);
 
+        const deckshopKeys = deck.cards.map(c => c.key).join('-');
+        const deckshopLink = `https://www.deckshop.pro/es/check/?deck=${deckshopKeys}`;
+
+        const btnDeckshop = document.createElement('a');
+        btnDeckshop.className = 'btn-deckshop';
+        btnDeckshop.href = deckshopLink;
+        btnDeckshop.target = '_blank';
+        btnDeckshop.rel = 'noopener noreferrer';
+        btnDeckshop.textContent = 'Revisar en Deck Shop';
+
         const link = document.createElement('a');
         link.className = 'deck-link';
         link.href = deepLink;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = 'Copiar Mazo a CR';
-        cardEl.appendChild(link);
+
+        const actionRow = document.createElement('div');
+        actionRow.className = 'action-row';
+        actionRow.appendChild(link);
+        actionRow.appendChild(btnDeckshop);
+
+        cardEl.appendChild(actionRow);
 
         grid.appendChild(cardEl);
     });
