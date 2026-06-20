@@ -320,7 +320,9 @@ button:active {
 
 .action-row {
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
     margin-top: auto;
 }
 
@@ -328,7 +330,8 @@ button:active {
     flex: 1;
     display: block;
     text-align: center;
-    padding: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.85rem;
     background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     color: white;
     text-decoration: none;
@@ -349,7 +352,8 @@ button:active {
     flex: 1;
     display: block;
     text-align: center;
-    padding: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.85rem;
     background: #334155;
     color: white;
     text-decoration: none;
