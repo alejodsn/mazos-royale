@@ -304,7 +304,28 @@ button:active {
     background: linear-gradient(90deg, #22c55e, #10b981);
 }
 
+.elixir-drop {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #d946ef;
+    color: white;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    border: 1px solid #701a75;
+}
+
+.action-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
 .deck-link {
+    flex: 1;
     display: block;
     text-align: center;
     padding: 0.75rem;
@@ -314,7 +335,6 @@ button:active {
     border-radius: 8px;
     font-weight: 600;
     transition: opacity 0.3s, transform 0.1s;
-    margin-top: auto;
 }
 
 .deck-link:hover {
@@ -322,5 +342,27 @@ button:active {
 }
 
 .deck-link:active {
+    transform: scale(0.98);
+}
+
+.btn-deckshop {
+    flex: 1;
+    display: block;
+    text-align: center;
+    padding: 0.75rem;
+    background: #334155;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background-color 0.3s, transform 0.1s;
+    border: 1px solid #475569;
+}
+
+.btn-deckshop:hover {
+    background: #475569;
+}
+
+.btn-deckshop:active {
     transform: scale(0.98);
 }
