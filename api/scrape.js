@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     const maxedCards = [];
 
     data.cards.forEach(card => {
-      const absoluteLevel = 14 - card.maxLevel + card.level;
+      const absoluteLevel = 15 - card.maxLevel + card.level;
       const key = card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
       const hasEvolution = (card.evolutionLevel && card.evolutionLevel > 0) || isEvolution(key);
       
