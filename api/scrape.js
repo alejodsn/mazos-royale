@@ -38,18 +38,18 @@ export default async function handler(req, res) {
     const maxedCards = [];
 
     data.cards.forEach(card => {
-      const computedLevel = 14 - card.maxLevel + card.level;
+      const absoluteLevel = 14 - card.maxLevel + card.level;
       const key = card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
       const hasEvolution = (card.evolutionLevel && card.evolutionLevel > 0) || isEvolution(key);
       
-      const isMaxed = computedLevel >= 15 || computedLevel >= 16 || hasEvolution;
+      const isMaxed = absoluteLevel >= 15 || absoluteLevel >= 16 || hasEvolution;
       
       if (isMaxed) {
         maxedCards.push({
           id: card.id,
           name: card.name,
           key: key,
-          level: computedLevel,
+          absoluteLevel: absoluteLevel,
           isEvolution: hasEvolution,
           elixir: card.elixir || card.cost || card.elixirCost || 3, // Default a 3 si no existe
           image: `https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v9-f09d5c9d/${key}.png`
@@ -174,10 +174,38 @@ export default async function handler(req, res) {
         return { averageElixir, attack: Math.round(attack), defense: Math.round(defense), synergy: Math.round(synergy), balance: Math.round(balance) };
     };
 
-    const responseDecks = finalDecksRaw.map(deck => ({
-        cards: deck.cards,
-        stats: calculateStats(deck.cards)
-    }));
+    const sortDeckCards = (deckCards) => {
+        const sorted = [];
+        const evos = deckCards.filter(c => c.isEvolution);
+        const normals = deckCards.filter(c => !c.isEvolution);
+
+        // Índice 0: Evo 1 (si hay)
+        if (evos.length > 0) sorted.push(evos.shift());
+        
+        // Índice 1: Campeón o Normal
+        const champIndex = normals.findIndex(c => cardRoles.champions && cardRoles.champions.includes(c.key));
+        if (champIndex !== -1) {
+            sorted.push(normals.splice(champIndex, 1)[0]);
+        } else if (normals.length > 0) {
+            sorted.push(normals.shift());
+        }
+
+        // Índice 2: Evo 2 (si hay)
+        if (evos.length > 0) sorted.push(evos.shift());
+
+        // Resto: índices 3 al 7
+        sorted.push(...evos, ...normals);
+
+        return sorted;
+    };
+
+    const responseDecks = finalDecksRaw.map(deck => {
+        const sortedCards = sortDeckCards(deck.cards);
+        return {
+            cards: sortedCards,
+            stats: calculateStats(sortedCards)
+        };
+    });
 
     return res.status(200).json({ success: true, decks: responseDecks });
 
