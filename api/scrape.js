@@ -37,8 +37,17 @@ export default async function handler(req, res) {
 
     const maxedCards = [];
 
+    const rarityOffsets = {
+        'common': 0,
+        'rare': 2,
+        'epic': 5,
+        'legendary': 8,
+        'champion': 10
+    };
+
     data.cards.forEach(card => {
-      const absoluteLevel = 15 - card.maxLevel + card.level;
+      const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
+      const absoluteLevel = card.level + (rarityOffsets[rarity] || 0);
       const key = card.name.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
       const hasEvolution = (card.evolutionLevel && card.evolutionLevel > 0) || isEvolution(key);
       
@@ -201,9 +210,12 @@ export default async function handler(req, res) {
 
     const responseDecks = finalDecksRaw.map(deck => {
         const sortedCards = sortDeckCards(deck.cards);
+        const deckIds = sortedCards.map(c => c.id).join(';');
+        const clashRoyaleLink = `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${deckIds}&slots=1;0;1;0;0;0;0;0&tt=159000000`;
         return {
             cards: sortedCards,
-            stats: calculateStats(sortedCards)
+            stats: calculateStats(sortedCards),
+            clashRoyaleLink
         };
     });
 
