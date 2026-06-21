@@ -55,9 +55,7 @@ function renderDecks(decks) {
     const resultsSec = document.getElementById('results-section');
 
     decks.forEach((deck, index) => {
-        // Generar Deep Link de Clash Royale concatenando los IDs
-        const ids = deck.cards.map(c => c.id).join(';');
-        const deepLink = `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${ids}`;
+        const deepLink = deck.clashRoyaleLink;
 
         const cardEl = document.createElement('div');
         cardEl.className = 'deck-card';
